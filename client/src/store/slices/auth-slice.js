@@ -31,6 +31,29 @@ export const loginUser = createAsyncThunk("auth/loginUser", async (credentials, 
     }
 });
 
+export const loggedInUser = createAsyncThunk("auth/loggedInUser", async (_, { rejectWithValue }) => {
+    try {
+        const response = await authSvc.getLoggedInUserDetails();
+        return response.data;
+    } catch (error) {
+        return rejectWithValue(error.response.data);
+    }
+});
+
+export const updateUserProfile = createAsyncThunk("auth/updateProfile", async (userData, { rejectWithValue, getState }) => {
+    try {
+        const state = getState();
+
+        const userId = state.auth.user?._id;
+        if (!userId) throw new Error("User not found");
+
+        const response = await authSvc.updateUser(userId, userData);
+        return response.data;
+    } catch (error) {
+        return rejectWithValue(error.response?.data || error.message);
+    }
+});
+
 const authSlice = createSlice({
     name: "auth",
     initialState: {
@@ -64,6 +87,12 @@ const authSlice = createSlice({
         },
         setLoggedIn: (state, action) => {
             state.isLoggedIn = action.payload;
+        },
+        logout: (state) => {
+            state.user = null;
+            state.isLoggedIn = false;
+            localStorage.removeItem("token");
+            localStorage.removeItem("refresh");
         },
     },
 
@@ -109,14 +138,43 @@ const authSlice = createSlice({
                 localStorage.setItem("token", action.payload.token);
                 localStorage.setItem("refresh", action.payload.refreshToken);
             })
+            // Login User details
             .addCase(loginUser.rejected, (state, action) => {
                 state.loading = false;
                 state.isLoggedIn = false;
+                state.error = action.payload;
+            })
+            .addCase(loggedInUser.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(loggedInUser.fulfilled, (state, action) => {
+                state.loading = false;
+                state.user = action.payload;
+                state.isLoggedIn = true;
+            })
+            .addCase(loggedInUser.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload;
+                state.isLoggedIn = false;
+                localStorage.removeItem("token");
+                localStorage.removeItem("refresh");
+            })
+            // Update User Profile
+            .addCase(updateUserProfile.pending, (state) => {
+                state.loading = "pending";
+            })
+            .addCase(updateUserProfile.fulfilled, (state, action) => {
+                state.user = action.payload;
+                state.loading = "succeeded";
+            })
+            .addCase(updateUserProfile.rejected, (state, action) => {
+                state.loading = "failed";
                 state.error = action.payload;
             });
     },
 });
 
-export const { setOtp, setOtpError, setIsOtpModalOpen, clearAuthState, setLoggedIn } = authSlice.actions;
+export const { setOtp, setOtpError, setIsOtpModalOpen, clearAuthState, setLoggedIn, logout } = authSlice.actions;
 
 export default authSlice.reducer;

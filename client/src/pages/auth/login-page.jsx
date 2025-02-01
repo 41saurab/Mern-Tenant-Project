@@ -8,6 +8,7 @@ import { toast } from "react-toastify";
 import { useDispatch, useSelector } from "react-redux";
 import { loginUser } from "@/store/slices/auth-slice"; // Import the loginUser action
 import { useEffect } from "react";
+import { setErrorInfo } from "@/helper/helper";
 
 const LoginPage = () => {
     const dispatch = useDispatch();
@@ -36,7 +37,7 @@ const LoginPage = () => {
                 navigate("/home");
             })
             .catch((error) => {
-                toast.error("root", { message: error.message });
+                setErrorInfo(error, setError);
             });
     };
 
@@ -49,7 +50,7 @@ const LoginPage = () => {
                 navigate("/home");
             }
         } catch (error) {
-            toast.error("root", { message: error.message });
+            setErrorInfo(error, setError);
         }
     };
 
